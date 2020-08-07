@@ -1,0 +1,82 @@
+---
+title: "Reproducible Research: Peer Assessment 1 "
+author: "Launia White"
+date: "8/7/2020"
+output: 
+  html_document:
+    keep_md: true
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r lib, include=FALSE, echo=FALSE}
+library(readr)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Loading and preprocessing the data
+```{r loaddata, echo=TRUE}
+dat <- read_csv("~/activity.csv")
+```
+## What is mean total number of steps taken per day?
+```{r mnsteps, echo=TRUE}
+ts <- aggregate(steps~date, dat, FUN=sum)
+hist(ts$steps, main="Histogram of Total Steps per Day", xlab="Total Steps")
+options(scipen=999)
+mnsteps <- round(mean(ts$steps), digits=1)
+medsteps <- round(median(ts$steps), digits=1)
+```
+
+The mean total number of steps per day is `r mnsteps` and the median total number of steps taken per day is `r medsteps`.
+
+## What is the average daily activity pattern?
+```{r pattern, echo=TRUE}
+ms <- aggregate(steps~interval, dat, FUN=mean, na.rm=TRUE)
+p1 <- ggplot() + geom_line(aes(y = steps, x = interval),
+      data = ms, stat="identity") + 
+  ggtitle("Mean Steps per Day by Interval") + 
+  labs(x="Interval", y="Mean Steps per Day") 
+p1
+maxsteps <- ms[order(-ms$steps),]
+maxsteps <- head(maxsteps, n=1)
+maxsteps$steps <- round(maxsteps$steps, digits=1)
+```
+
+Interval `r maxsteps$interval` had the maximum number of steps of `r maxsteps$steps`.
+
+## Imputing missing values
+```{r missing, echo=TRUE}
+na <- sum(is.na(dat))
+```
+
+The total number of missing values in the dataset was `r na`.
+
+
+
+```{r impute, echo=TRUE}
+imputed <- dat # new dataset called imp
+for (i in ms$interval) {
+  imputed[imputed$interval == i & is.na(imputed$steps), ]$steps <- 
+    ms$steps[ms$interval == i]
+}
+is <- aggregate(steps~date, imputed, FUN=sum)
+hist(is$steps, main="Histogram of Total Steps per Day", xlab="Total Steps")
+mnstepsi <- round(mean(is$steps), digits=2)
+medstepsi <- round(median(is$steps), digits=2)
+```
+After imputation, the mean total number of steps per day was `r mnstepsi` and the median total number of steps taken per day increased to `r medstepsi`.
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r weekday, echo=TRUE}
+imputed$daytype <- ifelse(weekdays(imputed$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+msdaytype <- aggregate(steps~interval + daytype, imputed, FUN=sum, na.rm=TRUE)
+p3 <- ggplot() + geom_line(aes(y = steps, x = interval),
+                           size=1, data = msdaytype, stat="identity") + 
+  ggtitle(" ") + 
+  labs(x="Interval", y="Number of steps") 
+p4 <- p3 + facet_grid(daytype ~ .)
+p4
+```
+
+
